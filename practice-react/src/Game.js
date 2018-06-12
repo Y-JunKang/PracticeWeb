@@ -36,6 +36,9 @@ class Board extends Component {
 class Game extends Component {
     constructor(props) {
         super(props);
+
+        this.winner = null;
+
         this.state = {
             history: [
                 {
@@ -50,15 +53,16 @@ class Game extends Component {
 
     handleClick(x, y) {
         let currentStep = this.state.history[this.state.stepNum];
-        if (calcWinner(currentStep.squares, currentStep.dropAt, 3) || currentStep.squares[y][x]) {
+        if (this.winner || currentStep.squares[y][x]) {
             return;
         }
 
-        let nextStep = {};
-        nextStep.squares = deepcopy(currentStep.squares);
+        let nextStep = {
+            squares:deepcopy(currentStep.squares),
+            nextPlayer:currentStep.nextPlayer === 'X' ? 'O' : 'X',
+            dropAt:[x, y]
+        };
         nextStep.squares[y][x] = currentStep.nextPlayer;
-        nextStep.nextPlayer = currentStep.nextPlayer === 'X' ? 'O' : 'X';
-        nextStep.dropAt = [x, y];
 
         let stepNum = this.state.stepNum + 1;
         let history = this.state.history.slice(0, stepNum);
@@ -72,16 +76,13 @@ class Game extends Component {
     renderHistory(history) {
         const historyItems = history.map((step, index) => {
             let desc = `${step.nextPlayer === 'X' ? 'O' : 'X'} drop at ${step.dropAt}`;
-            if (index === 0) {
-                desc = `goto start`
-            }
+            if (index === 0) desc = `goto start`;
             return (
                 <li key={index}>
                     <button onClick={() => this.jumpTo(index)}>{desc}</button>
                 </li>
             )
         })
-
         return historyItems;
     }
 
@@ -93,17 +94,16 @@ class Game extends Component {
 
     render() {
         const step = this.state.history[this.state.stepNum];
-        const squares = step.squares;
         let status = 'next player :' + step.nextPlayer;
-        const winner = calcWinner(squares, step.dropAt, 3);
-        if (winner) {
-            status = 'winner is ' + winner
+        this.winner = calcWinner(step.squares,step.dropAt,3);
+        if (this.winner) {
+            status = 'winner is ' + this.winner;
         }
 
         return (
             <div className="game">
                 <div className="game-board">
-                    <Board squares={squares} handleClick={(x, y) => this.handleClick(x, y)} width={3} />
+                    <Board squares={step.squares} handleClick={(x, y) => this.handleClick(x, y)} width={3} />
                 </div>
                 <div className="game-info">
                     <div>{status}</div>
@@ -116,18 +116,16 @@ class Game extends Component {
 
 function calcWinner(squares, dropAt, condition) {
 
-    if (!dropAt) {
-        return null;
-    }
+    if (!dropAt) return null;
     let [x, y] = dropAt;
     if (x >= squares[0].length || y >= squares.length) {
         throw Error(`calcWiner dropAt ${dropAt} squares size (${squares[0].length},${squares.length}) outside`);
     }
     let player = squares[y][x];
-    let borderXMin = (x - condition + 1) >= 0 ? (x - condition + 1) : 0;
-    let borderXMax = (x + condition - 1) <= squares[0].length - 1 ? (x + condition - 1) : squares[0].length - 1;
-    let borderYMin = (y - condition + 1) >= 0 ? (y - condition + 1) : 0;
-    let borderYMax = (y + condition - 1) <= squares.length - 1 ? (y + condition - 1) : squares.length - 1;
+    let borderXMin = Math.max(x - condition + 1,0);
+    let borderXMax = Math.min(x + condition - 1,squares[0].length - 1);
+    let borderYMin = Math.max(y - condition + 1,0);
+    let borderYMax = Math.min(y + condition - 1,squares.length - 1);
 
     let result = checkLine([x, borderYMin], [x, borderYMax], condition, squares, player);
     if (!result) result = checkLine([borderXMin, y], [borderXMax, y], condition, squares, player);
