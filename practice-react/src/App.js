@@ -5,7 +5,7 @@ import Game from './Game'
 class App extends Component {
   render() {
     return (
-      <Game />
+      <Game condition={5} width={20}/>
     );
   }
 }

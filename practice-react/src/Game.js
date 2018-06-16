@@ -36,13 +36,11 @@ class Board extends Component {
 class Game extends Component {
     constructor(props) {
         super(props);
-
         this.winner = null;
-
         this.state = {
             history: [
                 {
-                    squares: Array(3).fill(Array(3).fill(null)),
+                    squares: Array(this.props.width).fill(Array(this.props.width).fill(null)),
                     nextPlayer: 'X',
                     dropAt: null
                 }
@@ -95,7 +93,7 @@ class Game extends Component {
     render() {
         const step = this.state.history[this.state.stepNum];
         let status = 'next player :' + step.nextPlayer;
-        this.winner = calcWinner(step.squares,step.dropAt,3);
+        this.winner = calcWinner(step.squares,step.dropAt,this.props.condition);
         if (this.winner) {
             status = 'winner is ' + this.winner;
         }
@@ -103,7 +101,7 @@ class Game extends Component {
         return (
             <div className="game">
                 <div className="game-board">
-                    <Board squares={step.squares} handleClick={(x, y) => this.handleClick(x, y)} width={3} />
+                    <Board squares={step.squares} handleClick={(x, y) => this.handleClick(x, y)} width={this.props.width} />
                 </div>
                 <div className="game-info">
                     <div>{status}</div>
@@ -122,44 +120,39 @@ function calcWinner(squares, dropAt, condition) {
         throw Error(`calcWiner dropAt ${dropAt} squares size (${squares[0].length},${squares.length}) outside`);
     }
     let player = squares[y][x];
-    let borderXMin = Math.max(x - condition + 1,0);
-    let borderXMax = Math.min(x + condition - 1,squares[0].length - 1);
-    let borderYMin = Math.max(y - condition + 1,0);
-    let borderYMax = Math.min(y + condition - 1,squares.length - 1);
+    let directions = [[1,0],[0,1],[1,1],[1,-1]];
 
-    let result = checkLine([x, borderYMin], [x, borderYMax], condition, squares, player);
-    if (!result) result = checkLine([borderXMin, y], [borderXMax, y], condition, squares, player);
-    if (!result) result = checkLine([borderXMin, borderYMin], [borderXMax, borderYMax], condition, squares, player);
-    if (!result) result = checkLine([borderXMin, borderYMax], [borderXMax, borderYMin], condition, squares, player);
-
-    return result;
-}
-
-function checkLine(startPoint, endPoint, condition, squares, player) {
-    let count = 0;
-    let stepX = step4Line(startPoint[0], endPoint[0]);
-    let stepY = step4Line(startPoint[1], endPoint[1]);
-    let [x, y] = startPoint;
-    let [endX, endY] = endPoint
-    for (; (x !== endX + stepX) || (y !== endY + stepY); x += stepX, y += stepY) {
-        if (squares[y][x] === player) {
-            count++;
-            if (count === condition) return player;
-        } else {
-            count = 0;
+    for(let i = 0; i < directions.length; i++) {
+        if(maxLength(directions[i],dropAt,squares,player) >= condition) {
+            return player;
         }
     }
+
     return null;
 }
 
-function step4Line(start, end) {
-    let step = 0;
-    if (start > end) {
-        step = -1;
-    } else if (start < end) {
-        step = 1;
+function maxLength(direction,dropAt,squares,player) {
+    let length = 0;
+    let [x,y] = dropAt
+    let [a,b] = [false,false];
+    // 正向检索
+    while(squares[y][x] === player) {
+        a = true;
+        length += 1;
+        x += direction[0];
+        y += direction[1];
     }
-    return step;
+
+    [x,y] = dropAt;
+    // 反向检索
+    while(squares[y][x] === player) {
+        b = true;
+        length += 1;
+        x -= direction[0];
+        y -= direction[1];
+    }
+    if(a&&b) length -= 1;
+    return length;
 }
 
 function deepcopy(obj) {
